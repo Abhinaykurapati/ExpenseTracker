@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Personal Expense Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<meta name="theme-color" content="#1F433A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1EFE4;
+  --paper:#FBFAF4;
+  --ink:#1E2B22;
+  --ink-soft:#5B6A57;
+  --teal:#2F5D50;
+  --teal-dark:#1F433A;
+  --teal-tint:#E4ECE7;
+  --gold:#C69A3E;
+  --gold-tint:#F5EBD3;
+  --rust:#B4462D;
+  --rust-tint:#F5E1D7;
+  --line:#DCD7C4;
+  --green-pos:#3F7D5C;
+  --shadow: 0 1px 2px rgba(30,43,34,0.06), 0 6px 20px rgba(30,43,34,0.05);
+  --radius: 10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:'Fraunces',serif; margin:0; color:var(--ink);}
+.mono{font-family:'IBM Plex Mono',monospace;}
+a{color:inherit;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--gold-tint);}
+
+/* ===== Layout ===== */
+.app{display:flex; min-height:100vh;}
+.sidebar{
+  width:220px; flex-shrink:0;
+  background:var(--teal-dark);
+  color:#EFEAD9;
+  display:flex; flex-direction:column;
+  padding:22px 14px;
+  position:sticky; top:0; height:100vh;
+}
+.brand{
+  display:flex; align-items:center; gap:10px;
+  padding:4px 10px 22px 10px;
+  border-bottom:1px solid rgba(255,255,255,0.12);
+  margin-bottom:18px;
+}
+.brand-mark{
+  width:30px;height:30px;border-radius:7px;
+  background:linear-gradient(160deg,var(--gold),#a97c25);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fraunces',serif; font-weight:700; color:var(--teal-dark); font-size:16px;
+}
+.brand-name{font-family:'Fraunces',serif; font-size:19px; font-weight:600; letter-spacing:0.2px;}
+.brand-sub{font-size:10.5px; color:#B9C7BE; letter-spacing:0.6px; text-transform:uppercase; margin-top:-2px;}
+
+.nav{display:flex; flex-direction:column; gap:2px; flex:1;}
+.nav-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:8px;
+  font-size:14px; font-weight:500; color:#D9E2DC;
+  background:transparent; border:none; text-align:left; width:100%;
+  transition:background .15s ease, color .15s ease;
+}
+.nav-item .ic{font-size:15px; width:18px; text-align:center;}
+.nav-item:hover{background:rgba(255,255,255,0.07); color:#fff;}
+.nav-item.active{background:rgba(198,154,62,0.18); color:#F7E8C4;}
+.nav-foot{
+  font-size:11px; color:#8FA298; padding:10px 12px; border-top:1px solid rgba(255,255,255,0.1); margin-top:10px;
+}
+
+.content{flex:1; min-width:0; padding:26px 34px 60px; max-width:1180px;}
+.view{display:none;}
+.view.active{display:block;}
+
+/* ===== Ledger tape header (signature element) ===== */
+.tape{
+  position:relative;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:2px;
+  box-shadow:var(--shadow);
+  padding:18px 26px 24px;
+  margin-bottom:26px;
+  display:flex; flex-wrap:wrap; gap:28px; justify-content:space-between;
+}
+.tape::after{
+  content:"";
+  position:absolute; left:0; right:0; bottom:-7px; height:14px;
+  background:
+    radial-gradient(circle at 8px 0, transparent 6px, var(--bg) 6.5px) 0 0/16px 14px repeat-x;
+}
+.tape-item{min-width:130px;}
+.tape-label{font-size:10.5px; letter-spacing:0.9px; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px;}
+.tape-value{font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; color:var(--teal-dark);}
+.tape-value.neg{color:var(--rust);}
+.tape-value.pos{color:var(--green-pos);}
+.tape-sub{font-size:11px; color:var(--ink-soft); margin-top:3px;}
+
+.page-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px;}
+.page-head h2{font-size:26px; font-weight:600;}
+.page-head .eyebrow{font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--gold); font-weight:600; display:block; margin-bottom:4px;}
+
+.btn{
+  border-radius:8px; padding:9px 16px; font-size:13.5px; font-weight:600; border:1px solid transparent;
+}
+.btn-primary{background:var(--teal); color:#fff;}
+.btn-primary:hover{background:var(--teal-dark);}
+.btn-ghost{background:transparent; color:var(--teal-dark); border:1px solid var(--line);}
+.btn-ghost:hover{border-color:var(--teal);}
+.btn-danger{background:transparent;color:var(--rust);border:1px solid var(--rust-tint);}
+.btn-danger:hover{background:var(--rust-tint);}
+.btn-sm{padding:5px 10px; font-size:12px; border-radius:6px;}
+
+.grid{display:grid; gap:16px;}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+@media (max-width:900px){.grid-3{grid-template-columns:1fr 1fr;} }
+
+.card{
+  background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+  padding:18px 20px; box-shadow:var(--shadow);
+}
+.card h3{font-size:15px; font-weight:600; margin-bottom:12px;}
+
+.empty{
+  text-align:center; padding:34px 10px; color:var(--ink-soft); font-size:13.5px;
+  border:1px dashed var(--line); border-radius:10px; background:rgba(255,255,255,0.4);
+}
+
+/* Account cards */
+.acc-card{
+  border-radius:12px; padding:16px 18px; color:#fff; position:relative; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:space-between; min-height:118px;
+}
+.acc-card.bank{background:linear-gradient(135deg,#2F5D50,#1F433A);}
+.acc-card.debit{background:linear-gradient(135deg,#3B6E8C,#26485E);}
+.acc-card.credit{background:linear-gradient(135deg,#8C4A3B,#5E2C22);}
+.acc-top{display:flex; justify-content:space-between; align-items:flex-start; font-size:11px; letter-spacing:0.5px; text-transform:uppercase; opacity:0.85;}
+.acc-name{font-family:'Fraunces',serif; font-size:17px; margin-top:8px;}
+.acc-num{font-family:'IBM Plex Mono',monospace; font-size:12px; opacity:0.85; margin-top:2px;}
+.acc-bal{font-family:'IBM Plex Mono',monospace; font-size:20px; margin-top:10px; font-weight:600;}
+.acc-actions{position:absolute; top:12px; right:10px; display:flex; gap:4px;}
+.acc-actions button{background:rgba(255,255,255,0.18); border:none; color:#fff; border-radius:5px; width:22px; height:22px; font-size:12px;}
+.acc-actions button:hover{background:rgba(255,255,255,0.32);}
+
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--ink-soft); padding:8px 10px; border-bottom:1px solid var(--line);}
+td{padding:10px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.tag{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:600;}
+.amt{font-family:'IBM Plex Mono',monospace; font-weight:600;}
+.amt.exp{color:var(--rust);}
+.amt.inc{color:var(--green-pos);}
+.row-actions{display:flex; gap:6px;}
+.icon-btn{background:transparent;border:none;color:var(--ink-soft);font-size:13px;padding:4px;border-radius:5px;}
+.icon-btn:hover{color:var(--rust); background:var(--rust-tint);}
+
+/* Budget bars */
+.bud-row{margin-bottom:14px;}
+.bud-top{display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;}
+.bud-cat{display:flex; align-items:center; gap:7px; font-weight:600;}
+.bud-bar-bg{height:8px; border-radius:5px; background:var(--line); overflow:hidden;}
+.bud-bar-fill{height:100%; border-radius:5px; background:var(--teal);}
+.bud-bar-fill.over{background:var(--rust);}
+.bud-nums{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);}
+
+/* Calendar */
+.cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+.cal-nav{display:flex; gap:6px;}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+.cal-dow{font-size:10.5px; text-transform:uppercase; color:var(--ink-soft); text-align:center; padding-bottom:4px;}
+.cal-day{
+  min-height:68px; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--paper);
+  cursor:pointer; position:relative; transition:border-color .15s;
+}
+.cal-day:hover{border-color:var(--teal);}
+.cal-day.empty{background:transparent; border:none; cursor:default;}
+.cal-day.today{border-color:var(--gold); box-shadow:inset 0 0 0 1px var(--gold);}
+.cal-daynum{font-size:12px; font-weight:600; color:var(--ink-soft);}
+.cal-dot{margin-top:4px; font-size:10px; background:var(--rust-tint); color:var(--rust); border-radius:5px; padding:1px 5px; display:inline-block;}
+
+/* Modal */
+.overlay{
+  position:fixed; inset:0; background:rgba(20,28,22,0.45); display:none; align-items:center; justify-content:center; z-index:100; padding:20px;
+}
+.overlay.show{display:flex;}
+.modal{
+  background:var(--paper); border-radius:12px; width:100%; max-width:440px; max-height:88vh; overflow-y:auto;
+  padding:24px 26px; box-shadow:0 20px 50px rgba(0,0,0,0.25);
+}
+.modal h3{font-size:18px; margin-bottom:16px;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
+.field input, .field select, .field textarea{
+  width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:7px; font-size:13.5px; font-family:inherit; background:#fff; color:var(--ink);
+}
+.field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--teal); outline-offset:1px; border-color:var(--teal);}
+.field-row{display:flex; gap:10px;}
+.field-row .field{flex:1;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+.check-list{display:flex; flex-direction:column; gap:8px; max-height:160px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:8px 10px;}
+.check-item{display:flex; align-items:center; gap:8px; font-size:13px;}
+
+/* Split */
+.split-summary{display:flex; gap:14px; margin-bottom:18px; flex-wrap:wrap;}
+.pill{padding:12px 16px; border-radius:10px; background:var(--paper); border:1px solid var(--line); min-width:150px;}
+.pill .lbl{font-size:11px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.4px;}
+.pill .val{font-family:'IBM Plex Mono',monospace; font-size:19px; font-weight:600; margin-top:4px;}
+.split-card{border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:12px; background:var(--paper);}
+.split-card-top{display:flex; justify-content:space-between; align-items:flex-start;}
+.split-title{font-family:'Fraunces',serif; font-size:16px; font-weight:600;}
+.split-meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+.split-part{display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--line); font-size:13px;}
+.chip{font-size:10.5px; padding:2px 7px; border-radius:20px; font-weight:600;}
+.chip.settled{background:var(--teal-tint); color:var(--teal-dark);}
+.chip.pending{background:var(--rust-tint); color:var(--rust);}
+
+.section-note{font-size:12.5px; color:var(--ink-soft); margin-bottom:16px; line-height:1.5;}
+.toast{
+  position:fixed; bottom:22px; right:22px; background:var(--teal-dark); color:#fff; padding:11px 18px; border-radius:8px;
+  font-size:13px; box-shadow:var(--shadow); z-index:200; opacity:0; transform:translateY(8px); transition:all .25s;
+}
+.toast.show{opacity:1; transform:translateY(0);}
+
+@media (max-width:760px){
+  .sidebar{position:fixed; z-index:50; transform:translateX(-100%); transition:transform .2s;}
+  .sidebar.open{transform:translateX(0);}
+  .content{padding:18px 16px 60px;}
+  .menu-btn{display:inline-flex !important;}
+  .grid-3{grid-template-columns:1fr;}
+}
+.menu-btn{display:none; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; background:var(--paper); border:1px solid var(--line); margin-bottom:14px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">L</div>
+      <div>
+        <div class="brand-name">Ledger</div>
+        <div class="brand-sub">Money, kept honest</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-item" data-view="dashboard"><span class="ic">◆</span> Dashboard</button>
+      <button class="nav-item" data-view="accounts"><span class="ic">▤</span> Accounts &amp; Cards</button>
+      <button class="nav-item" data-view="transactions"><span class="ic">≡</span> Transactions</button>
+      <button class="nav-item" data-view="budgets"><span class="ic">◔</span> Budgets</button>
+      <button class="nav-item" data-view="future"><span class="ic">▦</span> Future Expenses</button>
+      <button class="nav-item" data-view="split"><span class="ic">⇌</span> Split Money</button>
+    </nav>
+    <button class="nav-item" onclick="openExportModal()" style="margin-top:8px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.12); border-radius:0;"><span class="ic">⇩</span> Export CSV</button>
+    <div class="nav-foot">All data stays in this browser (localStorage). Nothing leaves your device.</div>
+  </aside>
+
+  <main class="content">
+    <button class="menu-btn" id="menuBtn">☰</button>
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="tape" id="tape"></div>
+      <div class="page-head">
+        <div><span class="eyebrow">Overview</span><h2>This month, at a glance</h2></div>
+        <button class="btn btn-primary" onclick="openTxnModal()">+ Add Expense</button>
+      </div>
+      <div class="grid grid-3" style="margin-bottom:22px;">
+        <div class="card">
+          <h3>Category breakdown</h3>
+          <div id="dashCatBreakdown"></div>
+        </div>
+        <div class="card">
+          <h3>Upcoming planned expenses</h3>
+          <div id="dashUpcoming"></div>
+        </div>
+        <div class="card">
+          <h3>Split balance</h3>
+          <div id="dashSplit"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Recent transactions</h3>
+        <div id="dashRecent"></div>
+      </div>
+    </section>
+
+    <!-- ACCOUNTS -->
+    <section class="view" id="view-accounts">
+      <div class="page-head">
+        <div><span class="eyebrow">Wallet</span><h2>Accounts &amp; cards</h2></div>
+        <button class="btn btn-primary" onclick="openAccountModal()">+ Add account / card</button>
+      </div>
+      <div class="section-note">Bank accounts and debit cards track cash you have. Credit cards track what you owe, against a credit limit.</div>
+      <div class="grid grid-3" id="accountsGrid"></div>
+    </section>
+
+    <!-- TRANSACTIONS -->
+    <section class="view" id="view-transactions">
+      <div class="page-head">
+        <div><span class="eyebrow">Log</span><h2>Transactions</h2></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-ghost" onclick="openExportModal()">⇩ Export CSV</button>
+          <button class="btn btn-primary" onclick="openTxnModal()">+ Add transaction</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:18px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <select id="filterAccount" class="mono" onchange="renderTransactions()" style="padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;"></select>
+          <select id="filterCategory" onchange="renderTransactions()" style="padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;"></select>
+          <select id="filterType" onchange="renderTransactions()" style="padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:13px;">
+            <option value="all">All types</option>
+            <option value="expense">Debit (expenses)</option>
+            <option value="income">Credit (income / payments)</option>
+          </select>
+        </div>
+      </div>
+      <div class="card"><div id="txnTable"></div></div>
+    </section>
+
+    <!-- BUDGETS -->
+    <section class="view" id="view-budgets">
+      <div class="page-head">
+        <div><span class="eyebrow">Discipline</span><h2>Budgets by category</h2></div>
+        <button class="btn btn-ghost" onclick="openCategoryModal()">+ New category</button>
+      </div>
+      <div class="card" id="overallBudgetCard" style="margin-bottom:18px;"></div>
+      <div class="section-note">Set a monthly budget for each category below. Bars turn rust-red once you cross it.</div>
+      <div class="card"><div id="budgetList"></div></div>
+    </section>
+
+    <!-- FUTURE -->
+    <section class="view" id="view-future">
+      <div class="page-head">
+        <div><span class="eyebrow">Planning</span><h2>Future expenses</h2></div>
+        <button class="btn btn-primary" onclick="openFutureModal()">+ Plan an expense</button>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="cal-head">
+            <h3 id="calMonthLabel" style="font-family:'Fraunces',serif; font-size:17px;"></h3>
+            <div class="cal-nav">
+              <button class="btn btn-ghost btn-sm" onclick="calShift(-1)">‹</button>
+              <button class="btn btn-ghost btn-sm" onclick="calShift(1)">›</button>
+            </div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div class="card">
+          <h3>Planned &amp; upcoming</h3>
+          <div id="futureList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPLIT -->
+    <section class="view" id="view-split">
+      <div class="page-head">
+        <div><span class="eyebrow">Shared</span><h2>Split money</h2></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="openFriendModal()">+ Friend</button>
+          <button class="btn btn-ghost" onclick="openGroupModal()">+ Group / Activity</button>
+          <button class="btn btn-primary" onclick="openSplitModal()">+ New split</button>
+        </div>
+      </div>
+      <div class="split-summary" id="splitSummary"></div>
+
+      <div class="grid grid-2" style="margin-bottom:22px; align-items:start;">
+        <div class="card">
+          <h3>Friends</h3>
+          <div id="friendsList"></div>
+        </div>
+        <div class="card">
+          <h3>Groups &amp; activities</h3>
+          <div id="groupsList"></div>
+        </div>
+      </div>
+
+      <div class="page-head" style="margin-top:4px;">
+        <div><span class="eyebrow">All activity</span><h2 style="font-size:19px;">Every split</h2></div>
+        <button class="btn btn-ghost" onclick="openExportSplitModal()">⇩ Export split report</button>
+      </div>
+      <div id="splitList"></div>
+    </section>
+
+  </main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========================= STATE ========================= */
+const STORAGE_KEY = 'ledger_expense_tracker_v1';
+const CUR = '₹';
+
+const DEFAULT_CATEGORIES = [
+  {id:'c_food', name:'Food', icon:'🍽️', color:'#B4462D', budget:8000},
+  {id:'c_life', name:'Lifestyle', icon:'🎈', color:'#C69A3E', budget:5000},
+  {id:'c_bills', name:'Bills & Utilities', icon:'💡', color:'#2F5D50', budget:6000},
+  {id:'c_insurance', name:'Insurance', icon:'🛡️', color:'#3B6E8C', budget:3000},
+  {id:'c_health', name:'Health', icon:'⚕️', color:'#7A4E9E', budget:2000},
+  {id:'c_transport', name:'Transport', icon:'🚗', color:'#4A6B4A', budget:3000},
+  {id:'c_shopping', name:'Shopping', icon:'🛍️', color:'#A8553F', budget:4000},
+  {id:'c_entertainment', name:'Entertainment', icon:'🎬', color:'#8C6A2F', budget:2000},
+  {id:'c_groceries', name:'Groceries', icon:'🛒', color:'#3F7D5C', budget:5000},
+  {id:'c_travel', name:'Travel', icon:'✈️', color:'#2D5F8A', budget:0},
+  {id:'c_education', name:'Education', icon:'📚', color:'#5E4B8C', budget:0},
+  {id:'c_other', name:'Other', icon:'✳️', color:'#6B6B6B', budget:0},
+];
+
+let state = load();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed.totalBudget===undefined) parsed.totalBudget = 0;
+      if(parsed.groups===undefined) parsed.groups = [];
+      return parsed;
+    }
+  }catch(e){ console.warn('load failed', e); }
+  return {
+    accounts:[
+      {id:uid(), name:'Primary Savings', type:'bank', bank:'HDFC Bank', last4:'4821', opening:45000},
+      {id:uid(), name:'Rewards Credit Card', type:'credit', bank:'ICICI Bank', last4:'2210', opening:0, limit:150000},
+    ],
+    categories: DEFAULT_CATEGORIES.map(c=>({...c})),
+    transactions:[],
+    futureExpenses:[],
+    friends:[{id:uid(), name:'You'}],
+    splits:[],
+    groups:[],
+    totalBudget:0,
+  };
+}
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function uid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function fmt(n){
+  const v = Math.round((n||0)*100)/100;
+  const sign = v<0 ? '-' : '';
+  return sign + CUR + Math.abs(v).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtDate(d){
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ========================= NAV ========================= */
+document.getElementById('nav').addEventListener('click', e=>{
+  const btn = e.target.closest('.nav-item');
+  if(!btn) return;
+  setView(btn.dataset.view);
+});
+function setView(name){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
+  document.getElementById('sidebar').classList.remove('open');
+  renderAll();
+}
+document.getElementById('menuBtn').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('open');
+});
+document.querySelector('.nav-item').classList.add('active');
+
+/* ========================= MODAL HELPERS ========================= */
+function openModal(html){
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('overlay').classList.remove('show');
+}
+document.getElementById('overlay').addEventListener('click', e=>{
+  if(e.target.id==='overlay') closeModal();
+});
+
+function accountOptions(selectedId){
+  return state.accounts.map(a=>`<option value="${a.id}" ${a.id===selectedId?'selected':''}>${a.name} (••${a.last4||'----'})</option>`).join('');
+}
+function categoryOptions(selectedId){
+  return state.categories.map(c=>`<option value="${c.id}" ${c.id===selectedId?'selected':''}>${c.icon} ${c.name}</option>`).join('');
+}
+
+/* ========================= ACCOUNTS ========================= */
+function accountBalance(acc){
+  const txns = state.transactions.filter(t=>t.accountId===acc.id);
+  let bal = acc.opening||0;
+  txns.forEach(t=>{
+    if(acc.type==='credit'){
+      bal += (t.type==='expense'? t.amount : -t.amount);
+    } else {
+      bal += (t.type==='expense'? -t.amount : t.amount);
+    }
+  });
+  return bal;
+}
+function openAccountModal(existing){
+  const a = existing || {};
+  openModal(`
+    <h3>${existing?'Edit account':'Add account / card'}</h3>
+    <div class="field">
+      <label>Account type</label>
+      <select id="f_type">
+        <option value="bank" ${a.type==='bank'?'selected':''}>Bank account</option>
+        <option value="debit" ${a.type==='debit'?'selected':''}>Debit card</option>
+        <option value="credit" ${a.type==='credit'?'selected':''}>Credit card</option>
+      </select>
+    </div>
+    <div class="field"><label>Nickname</label><input id="f_name" value="${a.name||''}" placeholder="e.g. Primary Savings"></div>
+    <div class="field-row">
+      <div class="field"><label>Bank / issuer</label><input id="f_bank" value="${a.bank||''}" placeholder="e.g. HDFC Bank"></div>
+      <div class="field"><label>Last 4 digits</label><input id="f_last4" value="${a.last4||''}" maxlength="4" placeholder="1234"></div>
+    </div>
+    <div class="field-row">
+      <div class="field" id="f_openingWrap"><label id="f_openingLabel">Opening balance</label><input id="f_opening" type="number" value="${a.opening!=null?a.opening:0}"></div>
+      <div class="field" id="f_limitWrap" style="display:${a.type==='credit'?'block':'none'}"><label>Credit limit</label><input id="f_limit" type="number" value="${a.limit||0}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAccount(${existing? `'${existing.id}'`:'null'})">Save</button>
+    </div>
+  `);
+  document.getElementById('f_type').addEventListener('change', e=>{
+    document.getElementById('f_limitWrap').style.display = e.target.value==='credit' ? 'block':'none';
+    document.getElementById('f_openingLabel').textContent = e.target.value==='credit' ? 'Current amount owed' : 'Opening balance';
+  });
+}
+function saveAccount(id){
+  const type = document.getElementById('f_type').value;
+  const name = document.getElementById('f_name').value.trim() || 'Untitled account';
+  const bank = document.getElementById('f_bank').value.trim();
+  const last4 = document.getElementById('f_last4').value.trim();
+  const opening = parseFloat(document.getElementById('f_opening').value)||0;
+  const limit = parseFloat(document.getElementById('f_limit').value)||0;
+  if(id){
+    const acc = state.accounts.find(a=>a.id===id);
+    Object.assign(acc, {type,name,bank,last4,opening,limit});
+  } else {
+    state.accounts.push({id:uid(), type, name, bank, last4, opening, limit});
+  }
+  save(); closeModal(); toast('Account saved'); renderAll();
+}
+function deleteAccount(id){
+  if(state.transactions.some(t=>t.accountId===id)){
+    if(!confirm('This account has transactions linked to it. Delete anyway? Transactions will remain but show as unlinked.')) return;
+  } else if(!confirm('Delete this account?')) return;
+  state.accounts = state.accounts.filter(a=>a.id!==id);
+  save(); renderAll();
+}
+function renderAccounts(){
+  const grid = document.getElementById('accountsGrid');
+  if(state.accounts.length===0){ grid.innerHTML = `<div class="empty">No accounts yet. Add a bank account, debit card, or credit card to start tracking.</div>`; return; }
+  grid.innerHTML = state.accounts.map(a=>{
+    const bal = accountBalance(a);
+    const label = a.type==='credit' ? 'Owed' : 'Balance';
+    const sub = a.type==='credit' ? `Limit ${fmt(a.limit)} · Available ${fmt(a.limit-bal)}` : (a.bank||'');
+    return `
+    <div class="acc-card ${a.type}">
+      <div class="acc-actions">
+        <button onclick='openAccountModal(${JSON.stringify(a).replace(/'/g,"&#39;")})' title="Edit">✎</button>
+        <button onclick="deleteAccount('${a.id}')" title="Delete">✕</button>
+      </div>
+      <div>
+        <div class="acc-top"><span>${a.type}</span><span>${a.bank||''}</span></div>
+        <div class="acc-name">${a.name}</div>
+        <div class="acc-num">•••• ${a.last4||'----'}</div>
+      </div>
+      <div>
+        <div class="acc-bal">${fmt(bal)} <span style="font-size:11px; font-weight:400; opacity:.75;">${label}</span></div>
+        <div style="font-size:11px; opacity:.8; margin-top:2px;">${sub}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ========================= CATEGORIES / BUDGETS ========================= */
+function openCategoryModal(existing){
+  const c = existing || {};
+  openModal(`
+    <h3>${existing?'Edit category':'New category'}</h3>
+    <div class="field"><label>Name</label><input id="f_cname" value="${c.name||''}" placeholder="e.g. Pets"></div>
+    <div class="field-row">
+      <div class="field"><label>Icon (emoji)</label><input id="f_cicon" value="${c.icon||'✳️'}"></div>
+      <div class="field"><label>Color</label><input id="f_ccolor" type="color" value="${c.color||'#2F5D50'}"></div>
+    </div>
+    <div class="field"><label>Monthly budget (${CUR})</label><input id="f_cbudget" type="number" value="${c.budget||0}"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCategory(${existing?`'${existing.id}'`:'null'})">Save</button>
+    </div>
+  `);
+}
+function saveCategory(id){
+  const name = document.getElementById('f_cname').value.trim() || 'Untitled';
+  const icon = document.getElementById('f_cicon').value.trim() || '✳️';
+  const color = document.getElementById('f_ccolor').value;
+  const budget = parseFloat(document.getElementById('f_cbudget').value)||0;
+  if(id){
+    const c = state.categories.find(c=>c.id===id);
+    Object.assign(c, {name,icon,color,budget});
+  } else {
+    state.categories.push({id:uid(), name, icon, color, budget});
+  }
+  save(); closeModal(); toast('Category saved'); renderAll();
+}
+function monthKey(d){ const dt=new Date(d); return dt.getFullYear()+'-'+dt.getMonth(); }
+function categorySpend(catId, ref){
+  const mk = monthKey(ref||new Date());
+  return state.transactions.filter(t=>t.categoryId===catId && t.type==='expense' && monthKey(t.date)===mk)
+    .reduce((s,t)=>s+t.amount,0);
+}
+function monthTotalSpend(ref){
+  const mk = monthKey(ref||new Date());
+  return state.transactions.filter(t=>t.type==='expense' && monthKey(t.date)===mk).reduce((s,t)=>s+t.amount,0);
+}
+function saveTotalBudget(){
+  state.totalBudget = parseFloat(document.getElementById('f_totalBudget').value)||0;
+  save(); toast('Overall budget saved'); renderAll();
+}
+function renderOverallBudget(){
+  const el = document.getElementById('overallBudgetCard');
+  const spent = monthTotalSpend();
+  const budget = state.totalBudget||0;
+  const pct = budget>0 ? Math.min(100,(spent/budget)*100) : (spent>0?100:0);
+  const over = budget>0 && spent>budget;
+  el.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-bottom:10px;">
+      <div>
+        <h3 style="margin-bottom:2px;">Overall monthly budget</h3>
+        <div style="font-size:12px; color:var(--ink-soft);">A single cap across every category combined, independent of individual category budgets.</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input id="f_totalBudget" type="number" value="${budget||''}" placeholder="e.g. 30000" style="width:140px; padding:8px 10px; border:1px solid var(--line); border-radius:7px; font-size:13px;">
+        <button class="btn btn-sm btn-primary" onclick="saveTotalBudget()">Save</button>
+      </div>
+    </div>
+    ${budget>0 ? `
+      <div class="bud-nums" style="margin-bottom:5px;">${fmt(spent)} spent of ${fmt(budget)} ${over? '— over budget':''}</div>
+      <div class="bud-bar-bg"><div class="bud-bar-fill ${over?'over':''}" style="width:${pct}%;"></div></div>
+    ` : `<div class="section-note" style="margin:0;">No overall cap set yet — spending so far this month: ${fmt(spent)}.</div>`}
+  `;
+}
+function renderBudgets(){
+  renderOverallBudget();
+  const el = document.getElementById('budgetList');
+  if(state.categories.length===0){ el.innerHTML=`<div class="empty">No categories yet.</div>`; return; }
+  el.innerHTML = state.categories.map(c=>{
+    const spent = categorySpend(c.id);
+    const budget = c.budget||0;
+    const pct = budget>0 ? Math.min(100,(spent/budget)*100) : (spent>0?100:0);
+    const over = budget>0 && spent>budget;
+    return `
+    <div class="bud-row">
+      <div class="bud-top">
+        <div class="bud-cat"><span>${c.icon}</span> ${c.name}
+          <button class="icon-btn" title="Edit" onclick='openCategoryModal(${JSON.stringify(c).replace(/'/g,"&#39;")})'>✎</button>
+        </div>
+        <div class="bud-nums">${fmt(spent)} ${budget>0? '/ '+fmt(budget):'(no budget set)'}</div>
+      </div>
+      <div class="bud-bar-bg"><div class="bud-bar-fill ${over?'over':''}" style="width:${budget>0?pct:0}%; background:${over?'':c.color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ========================= TRANSACTIONS ========================= */
+function splitOptions(selectedId){
+  if(state.splits.length===0) return `<option value="">No splits yet — create one first</option>`;
+  return `<option value="">Not linked</option>` + state.splits.map(sp=>
+    `<option value="${sp.id}" ${sp.id===selectedId?'selected':''}>${sp.title} · ${fmtDate(sp.date)} · ${fmt(sp.total)}</option>`
+  ).join('');
+}
+function openTxnModal(prefill){
+  const p = prefill || {};
+  const isEdit = !!p.id;
+  const today = new Date().toISOString().slice(0,10);
+  openModal(`
+    <h3>${isEdit?'Edit transaction':'Add transaction'}</h3>
+    <div class="field-row">
+      <div class="field"><label>Type</label>
+        <select id="f_ttype">
+          <option value="expense" ${p.type!=='income'?'selected':''}>Debit — money out (expense)</option>
+          <option value="income" ${p.type==='income'?'selected':''}>Credit — money in (income / payment)</option>
+        </select>
+      </div>
+      <div class="field"><label>Date</label><input id="f_tdate" type="date" value="${p.date||today}"></div>
+    </div>
+    <div class="field"><label>Amount (${CUR})</label><input id="f_tamount" type="number" value="${p.amount||''}" placeholder="0.00"></div>
+    <div class="field-row">
+      <div class="field"><label>Account / card</label><select id="f_taccount">${accountOptions(p.accountId)}</select></div>
+      <div class="field"><label>Category</label><select id="f_tcategory">${categoryOptions(p.categoryId)}</select></div>
+    </div>
+    <div class="field"><label>Note</label><input id="f_tnote" value="${p.note||''}" placeholder="What was this for?"></div>
+    <div class="field"><label>Link to split (optional)</label><select id="f_tsplit">${splitOptions(p.splitId)}</select></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTransaction(${isEdit?`'${p.id}'`:'null'}, ${p._futureId?`'${p._futureId}'`:'null'})">Save</button>
+    </div>
+  `);
+}
+function saveTransaction(id, fromFutureId){
+  if(state.accounts.length===0){ toast('Add an account first'); return; }
+  const data = {
+    type: document.getElementById('f_ttype').value,
+    date: document.getElementById('f_tdate').value,
+    amount: parseFloat(document.getElementById('f_tamount').value)||0,
+    accountId: document.getElementById('f_taccount').value,
+    categoryId: document.getElementById('f_tcategory').value,
+    note: document.getElementById('f_tnote').value.trim(),
+    splitId: document.getElementById('f_tsplit').value || null,
+  };
+  if(data.amount<=0){ toast('Enter an amount greater than zero'); return; }
+  if(id && id!=='null'){
+    const t = state.transactions.find(t=>t.id===id);
+    if(t) Object.assign(t, data);
+  } else {
+    state.transactions.push({id:uid(), ...data});
+  }
+  if(fromFutureId && fromFutureId!=='null'){
+    const fe = state.futureExpenses.find(f=>f.id===fromFutureId);
+    if(fe) fe.status='paid';
+  }
+  save(); closeModal(); toast('Transaction saved'); renderAll();
+}
+function deleteTransaction(id){
+  if(!confirm('Delete this transaction?')) return;
+  state.transactions = state.transactions.filter(t=>t.id!==id);
+  save(); renderAll();
+}
+function populateFilters(){
+  const fa = document.getElementById('filterAccount');
+  const fc = document.getElementById('filterCategory');
+  fa.innerHTML = `<option value="all">All accounts</option>` + accountOptions();
+  fc.innerHTML = `<option value="all">All categories</option>` + categoryOptions();
+}
+function renderTransactions(){
+  const fa = document.getElementById('filterAccount').value || 'all';
+  const fc = document.getElementById('filterCategory').value || 'all';
+  const ft = document.getElementById('filterType').value || 'all';
+  let list = [...state.transactions].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  if(fa!=='all') list = list.filter(t=>t.accountId===fa);
+  if(fc!=='all') list = list.filter(t=>t.categoryId===fc);
+  if(ft!=='all') list = list.filter(t=>t.type===ft);
+  const el = document.getElementById('txnTable');
+  if(list.length===0){ el.innerHTML = `<div class="empty">No transactions match. Try adding one, or clear filters.</div>`; return; }
+  el.innerHTML = `<table><thead><tr><th>Date</th><th>Category</th><th>Account</th><th>Note</th><th>Split</th><th>Amount</th><th></th></tr></thead><tbody>
+    ${list.map(t=>{
+      const cat = state.categories.find(c=>c.id===t.categoryId) || {icon:'✳️',name:'—',color:'#999'};
+      const acc = state.accounts.find(a=>a.id===t.accountId);
+      const sp = t.splitId ? state.splits.find(s=>s.id===t.splitId) : null;
+      return `<tr>
+        <td class="mono" style="font-size:12.5px;">${fmtDate(t.date)}</td>
+        <td><span class="tag" style="background:${cat.color}22; color:${cat.color}">${cat.icon} ${cat.name}</span></td>
+        <td style="font-size:12.5px;">${acc? acc.name : '<em>deleted</em>'}</td>
+        <td style="font-size:12.5px; color:var(--ink-soft);">${t.note||'—'}</td>
+        <td style="font-size:12px;">${sp? `<span class="tag" style="background:var(--teal-tint); color:var(--teal-dark);">🔗 ${sp.title}</span>` : '—'}</td>
+        <td class="amt ${t.type==='expense'?'exp':'inc'}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
+        <td><div class="row-actions">
+          <button class="icon-btn" title="Edit" onclick='openTxnModal(${JSON.stringify(t).replace(/'/g,"&#39;")})'>✎</button>
+          <button class="icon-btn" title="Delete" onclick="deleteTransaction('${t.id}')">✕</button>
+        </div></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+
+/* ========================= FUTURE EXPENSES / CALENDAR ========================= */
+let calRef = new Date();
+function calShift(dir){ calRef.setMonth(calRef.getMonth()+dir); renderCalendar(); }
+function openFutureModal(dateStr){
+  const today = new Date().toISOString().slice(0,10);
+  openModal(`
+    <h3>Plan a future expense</h3>
+    <div class="field"><label>Date</label><input id="f_fdate" type="date" value="${dateStr||today}"></div>
+    <div class="field"><label>Amount (${CUR})</label><input id="f_famount" type="number" placeholder="0.00"></div>
+    <div class="field-row">
+      <div class="field"><label>Category</label><select id="f_fcategory">${categoryOptions()}</select></div>
+      <div class="field"><label>Account (optional)</label><select id="f_faccount"><option value="">Not decided yet</option>${accountOptions()}</select></div>
+    </div>
+    <div class="field"><label>Note</label><input id="f_fnote" placeholder="e.g. Car insurance renewal"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFuture()">Save plan</button>
+    </div>
+  `);
+}
+function saveFuture(){
+  const amount = parseFloat(document.getElementById('f_famount').value)||0;
+  if(amount<=0){ toast('Enter an amount greater than zero'); return; }
+  state.futureExpenses.push({
+    id:uid(),
+    date: document.getElementById('f_fdate').value,
+    amount,
+    categoryId: document.getElementById('f_fcategory').value,
+    accountId: document.getElementById('f_faccount').value || null,
+    note: document.getElementById('f_fnote').value.trim(),
+    status:'pending',
+  });
+  save(); closeModal(); toast('Future expense planned'); renderAll();
+}
+function deleteFuture(id){
+  if(!confirm('Remove this planned expense?')) return;
+  state.futureExpenses = state.futureExpenses.filter(f=>f.id!==id);
+  save(); renderAll();
+}
+function markFuturePaid(id){
+  const fe = state.futureExpenses.find(f=>f.id===id);
+  if(!fe) return;
+  openTxnModal({type:'expense', date:new Date().toISOString().slice(0,10), amount:fe.amount, categoryId:fe.categoryId, accountId:fe.accountId||(state.accounts[0]&&state.accounts[0].id), note:fe.note+' (planned)', _futureId:id});
+}
+function renderCalendar(){
+  const y = calRef.getFullYear(), m = calRef.getMonth();
+  document.getElementById('calMonthLabel').textContent = calRef.toLocaleDateString('en-IN',{month:'long', year:'numeric'});
+  const firstDow = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+  const dows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html = dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) html += `<div class="cal-day empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const items = state.futureExpenses.filter(f=>f.date===dateStr && f.status==='pending');
+    const isToday = dateStr===todayStr;
+    html += `<div class="cal-day ${isToday?'today':''}" onclick="openFutureModal('${dateStr}')">
+      <div class="cal-daynum">${d}</div>
+      ${items.length? `<div class="cal-dot">${items.length} planned</div>`:''}
+    </div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+function renderFutureList(){
+  const el = document.getElementById('futureList');
+  const list = [...state.futureExpenses].filter(f=>f.status==='pending').sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if(list.length===0){ el.innerHTML = `<div class="empty">Nothing planned. Click a calendar date to add one.</div>`; return; }
+  el.innerHTML = list.map(f=>{
+    const cat = state.categories.find(c=>c.id===f.categoryId)||{icon:'✳️',name:'—',color:'#999'};
+    const overdue = new Date(f.date) < new Date(new Date().toDateString());
+    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-size:13.5px; font-weight:600;">${cat.icon} ${f.note||cat.name}</div>
+        <div style="font-size:11.5px; color:${overdue?'var(--rust)':'var(--ink-soft)'};">${fmtDate(f.date)}${overdue?' · overdue':''}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="amt exp">${fmt(f.amount)}</div>
+        <button class="btn btn-sm btn-ghost" onclick="markFuturePaid('${f.id}')">Mark paid</button>
+        <button class="icon-btn" onclick="deleteFuture('${f.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ========================= SPLIT MONEY ========================= */
+function openFriendModal(existing){
+  const f = existing || {};
+  openModal(`
+    <h3>${existing?'Rename friend':'Add a friend'}</h3>
+    <div class="field"><label>Name</label><input id="f_friendname" value="${f.name||''}" placeholder="e.g. Priya"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFriend(${existing?`'${existing.id}'`:'null'})">${existing?'Save':'Add'}</button>
+    </div>
+  `);
+}
+function saveFriend(id){
+  const name = document.getElementById('f_friendname').value.trim();
+  if(!name) return;
+  if(id && id!=='null'){
+    const f = state.friends.find(f=>f.id===id);
+    if(f) f.name = name;
+  } else {
+    state.friends.push({id:uid(), name});
+  }
+  save(); closeModal(); toast('Friend saved'); renderAll();
+}
+function deleteFriend(id){
+  if(id===state.friends[0].id){ toast("That's you — can't remove yourself"); return; }
+  const involved = state.splits.some(sp=> sp.payerId===id || sp.participants.some(p=>p.friendId===id));
+  const msg = involved ? 'This friend appears in existing splits. Delete anyway? Their name will show as removed in those splits.' : 'Delete this friend?';
+  if(!confirm(msg)) return;
+  state.friends = state.friends.filter(f=>f.id!==id);
+  state.groups.forEach(g=>{ g.memberIds = (g.memberIds||[]).filter(mid=>mid!==id); });
+  save(); renderAll();
+}
+
+/* ---- Groups / activities ---- */
+function openGroupModal(existing){
+  const g = existing || {};
+  const memberIds = g.memberIds || state.friends.map(f=>f.id);
+  openModal(`
+    <h3>${existing?'Edit group':'New group / activity'}</h3>
+    <div class="field"><label>Name</label><input id="f_gname" value="${g.name||''}" placeholder="e.g. Goa Trip"></div>
+    <div class="field"><label>Description (optional)</label><input id="f_gdesc" value="${g.description||''}" placeholder="e.g. June weekend trip"></div>
+    <div class="field"><label>Members</label>
+      <div class="check-list" id="gMembers">
+        ${state.friends.map(f=>`<label class="check-item"><input type="checkbox" value="${f.id}" ${memberIds.includes(f.id)?'checked':''}> ${f.name}</label>`).join('')}
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGroup(${existing?`'${existing.id}'`:'null'})">Save</button>
+    </div>
+  `);
+}
+function saveGroup(id){
+  const name = document.getElementById('f_gname').value.trim() || 'Untitled group';
+  const description = document.getElementById('f_gdesc').value.trim();
+  const memberIds = Array.from(document.querySelectorAll('#gMembers input:checked')).map(i=>i.value);
+  if(id && id!=='null'){
+    const g = state.groups.find(g=>g.id===id);
+    if(g) Object.assign(g, {name, description, memberIds});
+  } else {
+    state.groups.push({id:uid(), name, description, memberIds});
+  }
+  save(); closeModal(); toast('Group saved'); renderAll();
+}
+function deleteGroup(id){
+  const count = state.splits.filter(sp=>sp.groupId===id).length;
+  const msg = count>0 ? `This group has ${count} split(s). Delete the group and unlink them (the splits stay, just ungrouped)?` : 'Delete this group?';
+  if(!confirm(msg)) return;
+  state.splits.forEach(sp=>{ if(sp.groupId===id) sp.groupId=null; });
+  state.groups = state.groups.filter(g=>g.id!==id);
+  save(); renderAll();
+}
+function groupName(id){ const g=state.groups.find(g=>g.id===id); return g?g.name:'—'; }
+
+/* ---- Splits ---- */
+function openSplitModal(groupId){
+  const gid = (groupId && groupId!=='null') ? groupId : null;
+  const group = gid ? state.groups.find(g=>g.id===gid) : null;
+  const friends = state.friends;
+  const preselected = group ? (group.memberIds||[]) : friends.map(f=>f.id);
+  openModal(`
+    <h3>New split${group? ' — '+group.name : ''}</h3>
+    <div class="field"><label>Title</label><input id="f_sptitle" placeholder="e.g. Goa trip dinner"></div>
+    <div class="field-row">
+      <div class="field"><label>Total amount (${CUR})</label><input id="f_spamount" type="number" placeholder="0.00" oninput="recalcSplitShares()"></div>
+      <div class="field"><label>Date</label><input id="f_spdate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    </div>
+    <div class="field"><label>Group / activity (optional)</label>
+      <select id="f_spgroup">
+        <option value="">No group — standalone split</option>
+        ${state.groups.map(g=>`<option value="${g.id}" ${g.id===gid?'selected':''}>${g.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Paid by</label>
+      <select id="f_sppayer">${friends.map(f=>`<option value="${f.id}">${f.name}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Split between</label>
+      <div class="check-list" id="spParticipants">
+        ${friends.map(f=>`<label class="check-item"><input type="checkbox" value="${f.id}" ${preselected.includes(f.id)?'checked':''} onchange="recalcSplitShares()"> ${f.name}</label>`).join('')}
+      </div>
+    </div>
+    <div class="field"><label>Split method</label>
+      <select id="f_spmethod" onchange="recalcSplitShares()">
+        <option value="equal">Equal split</option>
+        <option value="custom">Custom amounts</option>
+      </select>
+    </div>
+    <div class="field" id="spCustomWrap" style="display:none;"><label>Custom shares</label><div id="spCustomList" class="check-list"></div></div>
+    <div id="spPreview" style="font-size:12px; color:var(--ink-soft); margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSplit()">Save split</button>
+    </div>
+  `);
+  recalcSplitShares();
+}
+function getCheckedParticipants(){
+  return Array.from(document.querySelectorAll('#spParticipants input:checked')).map(i=>i.value);
+}
+function recalcSplitShares(){
+  const method = document.getElementById('f_spmethod').value;
+  const total = parseFloat(document.getElementById('f_spamount').value)||0;
+  const participantIds = getCheckedParticipants();
+  const customWrap = document.getElementById('spCustomWrap');
+  const preview = document.getElementById('spPreview');
+  if(method==='custom'){
+    customWrap.style.display='block';
+    document.getElementById('spCustomList').innerHTML = participantIds.map(pid=>{
+      const f = state.friends.find(x=>x.id===pid);
+      return `<label class="check-item" style="justify-content:space-between;">${f.name} <input type="number" style="width:90px;" class="custom-share" data-pid="${pid}" placeholder="0.00" oninput="recalcSplitShares()"></label>`;
+    }).join('');
+    const sum = Array.from(document.querySelectorAll('.custom-share')).reduce((s,i)=>s+(parseFloat(i.value)||0),0);
+    preview.textContent = `Allocated ${fmt(sum)} of ${fmt(total)}${Math.abs(sum-total)>0.01?' — does not add up yet':''}`;
+  } else {
+    customWrap.style.display='none';
+    const each = participantIds.length? total/participantIds.length : 0;
+    preview.textContent = participantIds.length? `${fmt(each)} per person × ${participantIds.length} people` : 'Select at least one participant';
+  }
+}
+function saveSplit(){
+  const title = document.getElementById('f_sptitle').value.trim() || 'Untitled split';
+  const total = parseFloat(document.getElementById('f_spamount').value)||0;
+  const date = document.getElementById('f_spdate').value;
+  const groupId = document.getElementById('f_spgroup').value || null;
+  const payerId = document.getElementById('f_sppayer').value;
+  const method = document.getElementById('f_spmethod').value;
+  const participantIds = getCheckedParticipants();
+  if(total<=0 || participantIds.length===0){ toast('Add an amount and at least one participant'); return; }
+  let shares = {};
+  if(method==='custom'){
+    let sum=0;
+    document.querySelectorAll('.custom-share').forEach(i=>{ const v=parseFloat(i.value)||0; shares[i.dataset.pid]=v; sum+=v; });
+    if(Math.abs(sum-total)>0.5){ toast('Custom shares must add up to the total'); return; }
+  } else {
+    const each = total/participantIds.length;
+    participantIds.forEach(pid=> shares[pid]=each);
+  }
+  const participants = participantIds.map(pid=>({ friendId:pid, share: shares[pid]||0, settled: pid===payerId }));
+  state.splits.push({ id:uid(), title, total, date, payerId, groupId, participants });
+  save(); closeModal(); toast('Split saved'); renderAll();
+}
+function toggleSettled(splitId, friendId){
+  const sp = state.splits.find(s=>s.id===splitId);
+  const p = sp.participants.find(p=>p.friendId===friendId);
+  p.settled = !p.settled;
+  save(); renderAll();
+}
+function deleteSplit(id){
+  if(!confirm('Delete this split?')) return;
+  state.splits = state.splits.filter(s=>s.id!==id);
+  save(); renderAll();
+}
+function friendName(id){ const f=state.friends.find(f=>f.id===id); return f?f.name:'Removed friend'; }
+function computeNetBalances(splitsList){
+  // positive = owed to this friend overall, negative = this friend owes overall
+  const list = splitsList || state.splits;
+  const net = {};
+  state.friends.forEach(f=>net[f.id]=0);
+  list.forEach(sp=>{
+    sp.participants.forEach(p=>{
+      if(p.friendId===sp.payerId) return;
+      if(!p.settled){
+        net[sp.payerId] = (net[sp.payerId]||0) + p.share;
+        net[p.friendId] = (net[p.friendId]||0) - p.share;
+      }
+    });
+  });
+  return net;
+}
+
+/* ---- Renders ---- */
+function renderFriendsList(){
+  const el = document.getElementById('friendsList');
+  const net = computeNetBalances();
+  const others = state.friends.slice(1);
+  if(others.length===0){ el.innerHTML = `<div class="empty">No friends added yet. Add one to start splitting bills.</div>`; return; }
+  el.innerHTML = others.map(f=>{
+    const bal = net[f.id]||0;
+    const involvedCount = state.splits.filter(sp=> sp.payerId===f.id || sp.participants.some(p=>p.friendId===f.id)).length;
+    const label = bal>0.005 ? `owes you ${fmt(bal)}` : bal<-0.005 ? `you owe ${fmt(-bal)}` : 'settled up';
+    const cls = bal>0.005 ? 'inc' : bal<-0.005 ? 'exp' : '';
+    return `<div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-weight:600; font-size:13.5px;">${f.name}</div>
+        <div style="font-size:11.5px; color:var(--ink-soft);">${involvedCount} split(s) involved</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="amt ${cls}" style="font-size:12.5px;">${label}</div>
+        <button class="icon-btn" title="Rename" onclick='openFriendModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>✎</button>
+        <button class="icon-btn" title="Delete" onclick="deleteFriend('${f.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderGroupsList(){
+  const el = document.getElementById('groupsList');
+  if(state.groups.length===0){ el.innerHTML = `<div class="empty">No groups yet. Create one for a trip or shared activity to keep its splits together.</div>`; return; }
+  el.innerHTML = state.groups.map(g=>{
+    const groupSplits = state.splits.filter(sp=>sp.groupId===g.id);
+    const total = groupSplits.reduce((s,sp)=>s+sp.total,0);
+    const net = computeNetBalances(groupSplits);
+    const memberIds = g.memberIds||[];
+    const members = memberIds.map(id=>friendName(id));
+    return `<div style="border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div>
+          <div style="font-family:'Fraunces',serif; font-size:15px; font-weight:600;">${g.name}</div>
+          ${g.description? `<div style="font-size:11.5px; color:var(--ink-soft); margin-top:2px;">${g.description}</div>`:''}
+          <div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">${members.join(', ')||'No members yet'}</div>
+        </div>
+        <div style="display:flex; gap:4px; flex-shrink:0;">
+          <button class="icon-btn" title="Edit" onclick='openGroupModal(${JSON.stringify(g).replace(/'/g,"&#39;")})'>✎</button>
+          <button class="icon-btn" title="Delete" onclick="deleteGroup('${g.id}')">✕</button>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px dashed var(--line);">
+        <div style="font-size:12px; color:var(--ink-soft);">${groupSplits.length} split(s) · Total ${fmt(total)}</div>
+        <button class="btn btn-sm btn-ghost" onclick="openSplitModal('${g.id}')">+ Add split</button>
+      </div>
+      ${groupSplits.length>0 ? `<div style="margin-top:8px;">
+        ${memberIds.filter(id=>id!==state.friends[0].id).map(id=>{
+          const bal = net[id]||0;
+          if(Math.abs(bal)<0.005) return '';
+          return `<div style="display:flex; justify-content:space-between; font-size:12px; padding:2px 0;"><span>${friendName(id)}</span><span class="${bal>0?'amt inc':'amt exp'}">${bal>0? 'owes you '+fmt(bal) : 'you owe '+fmt(-bal)}</span></div>`;
+        }).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+function renderSplit(){
+  renderFriendsList();
+  renderGroupsList();
+  const net = computeNetBalances();
+  const you = state.friends[0]; // convention: first friend = "You"
+  const summaryEl = document.getElementById('splitSummary');
+  const owedToYou = Math.max(0, net[you?.id]||0);
+  const youOwe = Math.max(0, -(net[you?.id]||0));
+  summaryEl.innerHTML = `
+    <div class="pill"><div class="lbl">Owed to you</div><div class="val" style="color:var(--green-pos)">${fmt(owedToYou)}</div></div>
+    <div class="pill"><div class="lbl">You owe</div><div class="val" style="color:var(--rust)">${fmt(youOwe)}</div></div>
+    <div class="pill"><div class="lbl">Net position</div><div class="val">${fmt((net[you?.id]||0))}</div></div>
+  `;
+  const listEl = document.getElementById('splitList');
+  if(state.splits.length===0){ listEl.innerHTML = `<div class="empty">No splits yet. Create one to divide a bill with friends.</div>`; return; }
+  listEl.innerHTML = [...state.splits].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(sp=>{
+    const linked = state.transactions.filter(t=>t.splitId===sp.id);
+    return `
+    <div class="split-card">
+      <div class="split-card-top">
+        <div>
+          <div class="split-title">${sp.title} ${sp.groupId? `<span class="tag" style="background:var(--gold-tint); color:#8a6a1f; font-size:10.5px; margin-left:6px; vertical-align:middle;">${groupName(sp.groupId)}</span>`:''}</div>
+          <div class="split-meta">${fmtDate(sp.date)} · Total ${fmt(sp.total)} · Paid by ${friendName(sp.payerId)}</div>
+        </div>
+        <button class="icon-btn" onclick="deleteSplit('${sp.id}')">✕</button>
+      </div>
+      ${sp.participants.filter(p=>p.friendId!==sp.payerId).map(p=>`
+        <div class="split-part">
+          <span>${friendName(p.friendId)} owes ${friendName(sp.payerId)}</span>
+          <span style="display:flex; align-items:center; gap:8px;">
+            <span class="amt exp">${fmt(p.share)}</span>
+            <span class="chip ${p.settled?'settled':'pending'}" style="cursor:pointer;" onclick="toggleSettled('${sp.id}','${p.friendId}')">${p.settled?'Settled':'Pending'}</span>
+          </span>
+        </div>
+      `).join('')}
+      <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.4px;">Linked transactions</span>
+          <button class="btn btn-sm btn-ghost" onclick='openTxnModal({date:"${sp.date}", amount:${sp.total}, splitId:"${sp.id}", note:"${(sp.title||'').replace(/["']/g,'')}"})'>+ Link expense</button>
+        </div>
+        ${linked.length===0 ? `<div style="font-size:12px; color:var(--ink-soft);">None yet — link the transaction where you actually paid this, to keep it tied to your accounts.</div>` :
+          linked.map(t=>{
+            const acc = state.accounts.find(a=>a.id===t.accountId);
+            return `<div style="display:flex; justify-content:space-between; font-size:12.5px; padding:3px 0;"><span>${fmtDate(t.date)} · ${acc?acc.name:'—'}</span><span class="amt exp">${fmt(t.amount)}</span></div>`;
+          }).join('')
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- Dedicated split export ---- */
+function openExportSplitModal(){
+  openModal(`
+    <h3>Export split report</h3>
+    <div class="field"><label>Scope</label>
+      <select id="f_spexgroup">
+        <option value="all">All splits</option>
+        ${state.groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="section-note">Includes friend balances, group totals, and a line-by-line breakdown — handy to share or archive after settling up.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="exportSplitCSV()">Download CSV</button>
+    </div>
+  `);
+}
+function exportSplitCSV(){
+  const filterGroup = document.getElementById('f_spexgroup').value;
+  let splits = [...state.splits];
+  let label = 'all';
+  if(filterGroup!=='all'){
+    splits = splits.filter(sp=>sp.groupId===filterGroup);
+    label = (state.groups.find(g=>g.id===filterGroup)||{name:'group'}).name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  }
+  splits.sort((a,b)=> new Date(a.date)-new Date(b.date));
+
+  const rows = [];
+  rows.push(['Ledger — split money report'].map(csvEsc).join(','));
+  rows.push(['Scope', filterGroup==='all' ? 'All splits' : groupName(filterGroup)].map(csvEsc).join(','));
+  rows.push(['Generated on', fmtDate(new Date())].map(csvEsc).join(','));
+  rows.push('');
+
+  const net = computeNetBalances(splits);
+  rows.push(['Friend balances (within this scope)'].map(csvEsc).join(','));
+  rows.push(['Friend','Net balance (positive = owed to you, negative = you owe)'].map(csvEsc).join(','));
+  state.friends.slice(1).forEach(f=>{
+    rows.push([f.name, (net[f.id]||0).toFixed(2)].map(csvEsc).join(','));
+  });
+  rows.push('');
+
+  if(filterGroup==='all' && state.groups.length>0){
+    rows.push(['Group summary'].map(csvEsc).join(','));
+    rows.push(['Group','Splits','Total'].map(csvEsc).join(','));
+    state.groups.forEach(g=>{
+      const gs = state.splits.filter(sp=>sp.groupId===g.id);
+      rows.push([g.name, gs.length, gs.reduce((s,sp)=>s+sp.total,0).toFixed(2)].map(csvEsc).join(','));
+    });
+    rows.push('');
+  }
+
+  rows.push(['Split detail'].map(csvEsc).join(','));
+  rows.push(['Date','Title','Group','Paid by','Participant','Share','Status'].map(csvEsc).join(','));
+  splits.forEach(sp=>{
+    sp.participants.forEach(p=>{
+      if(p.friendId===sp.payerId) return;
+      rows.push([fmtDate(sp.date), sp.title, sp.groupId?groupName(sp.groupId):'—', friendName(sp.payerId), friendName(p.friendId), p.share.toFixed(2), p.settled?'Settled':'Pending'].map(csvEsc).join(','));
+    });
+  });
+
+  const csv = rows.join('\n');
+  downloadCSV(`ledger-split-report-${label}.csv`, csv);
+  closeModal();
+  toast('Split report downloaded');
+}
+
+/* ========================= DASHBOARD ========================= */
+function renderTape(){
+  const totalBank = state.accounts.filter(a=>a.type!=='credit').reduce((s,a)=>s+accountBalance(a),0);
+  const totalOwed = state.accounts.filter(a=>a.type==='credit').reduce((s,a)=>s+accountBalance(a),0);
+  const monthSpend = monthTotalSpend();
+  const totalBudget = state.totalBudget>0 ? state.totalBudget : state.categories.reduce((s,c)=>s+(c.budget||0),0);
+  const remaining = totalBudget - monthSpend;
+  const upcoming = state.futureExpenses.filter(f=>f.status==='pending').reduce((s,f)=>s+f.amount,0);
+  document.getElementById('tape').innerHTML = `
+    <div class="tape-item"><div class="tape-label">Cash on hand</div><div class="tape-value pos">${fmt(totalBank)}</div><div class="tape-sub">across ${state.accounts.filter(a=>a.type!=='credit').length} bank / debit accounts</div></div>
+    <div class="tape-item"><div class="tape-label">Owed on credit cards</div><div class="tape-value neg">${fmt(totalOwed)}</div><div class="tape-sub">${state.accounts.filter(a=>a.type==='credit').length} card(s)</div></div>
+    <div class="tape-item"><div class="tape-label">Spent this month</div><div class="tape-value">${fmt(monthSpend)}</div><div class="tape-sub">${new Date().toLocaleDateString('en-IN',{month:'long'})}</div></div>
+    <div class="tape-item"><div class="tape-label">Budget remaining</div><div class="tape-value ${remaining<0?'neg':'pos'}">${fmt(remaining)}</div><div class="tape-sub">of ${fmt(totalBudget)} planned</div></div>
+    <div class="tape-item"><div class="tape-label">Planned upcoming</div><div class="tape-value">${fmt(upcoming)}</div><div class="tape-sub">${state.futureExpenses.filter(f=>f.status==='pending').length} item(s)</div></div>
+  `;
+}
+function renderDashCatBreakdown(){
+  const el = document.getElementById('dashCatBreakdown');
+  const mk = monthKey(new Date());
+  const rows = state.categories.map(c=>({c, spend: state.transactions.filter(t=>t.categoryId===c.id&&t.type==='expense'&&monthKey(t.date)===mk).reduce((s,t)=>s+t.amount,0)}))
+    .filter(r=>r.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,6);
+  if(rows.length===0){ el.innerHTML = `<div class="empty">No spending yet this month.</div>`; return; }
+  const max = Math.max(...rows.map(r=>r.spend));
+  el.innerHTML = rows.map(r=>`
+    <div class="bud-row">
+      <div class="bud-top"><div class="bud-cat">${r.c.icon} ${r.c.name}</div><div class="bud-nums">${fmt(r.spend)}</div></div>
+      <div class="bud-bar-bg"><div class="bud-bar-fill" style="width:${(r.spend/max)*100}%; background:${r.c.color}"></div></div>
+    </div>`).join('');
+}
+function renderDashUpcoming(){
+  const el = document.getElementById('dashUpcoming');
+  const list = state.futureExpenses.filter(f=>f.status==='pending').sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5);
+  if(list.length===0){ el.innerHTML = `<div class="empty">Nothing planned yet.</div>`; return; }
+  el.innerHTML = list.map(f=>{
+    const cat = state.categories.find(c=>c.id===f.categoryId)||{icon:'✳️',name:'—'};
+    return `<div style="display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px;">
+      <span>${cat.icon} ${f.note||cat.name}</span><span class="mono" style="color:var(--ink-soft)">${fmtDate(f.date)}</span>
+    </div>`;
+  }).join('');
+}
+function renderDashSplit(){
+  const el = document.getElementById('dashSplit');
+  const net = computeNetBalances();
+  const you = state.friends[0];
+  const val = net[you?.id]||0;
+  el.innerHTML = `
+    <div style="text-align:center; padding:8px 0;">
+      <div class="tape-value ${val>=0?'pos':'neg'}" style="font-size:26px;">${fmt(val)}</div>
+      <div class="tape-sub">${val>=0? 'Net owed to you' : 'Net you owe others'}</div>
+    </div>`;
+}
+function renderDashRecent(){
+  const el = document.getElementById('dashRecent');
+  const list = [...state.transactions].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+  if(list.length===0){ el.innerHTML = `<div class="empty">No transactions yet. Add your first expense to see it here.</div>`; return; }
+  el.innerHTML = `<table><tbody>${list.map(t=>{
+    const cat = state.categories.find(c=>c.id===t.categoryId)||{icon:'✳️',name:'—',color:'#999'};
+    const acc = state.accounts.find(a=>a.id===t.accountId);
+    return `<tr>
+      <td class="mono" style="font-size:12.5px; width:90px;">${fmtDate(t.date)}</td>
+      <td><span class="tag" style="background:${cat.color}22; color:${cat.color}">${cat.icon} ${cat.name}</span></td>
+      <td style="font-size:12.5px;">${acc?acc.name:'—'}</td>
+      <td class="amt ${t.type==='expense'?'exp':'inc'}" style="text-align:right;">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+/* ========================= EXPORT CSV ========================= */
+function openExportModal(){
+  const curMonthVal = new Date().toISOString().slice(0,7);
+  openModal(`
+    <h3>Export CSV report</h3>
+    <div class="field"><label>Range</label>
+      <select id="f_exrange" onchange="document.getElementById('f_exmonthWrap').style.display=(this.value==='month'?'block':'none')">
+        <option value="month">Specific month</option>
+        <option value="all">All time</option>
+      </select>
+    </div>
+    <div class="field" id="f_exmonthWrap"><label>Month</label><input id="f_exmonth" type="month" value="${curMonthVal}"></div>
+    <div class="field"><label style="display:flex; align-items:center; gap:7px; font-weight:500; color:var(--ink);"><input type="checkbox" id="f_exsummary" checked style="width:auto;"> Include category budget summary</label></div>
+    <div class="section-note">Downloads a .csv file you can open in Excel, Google Sheets, or Numbers — handy as a monthly report.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="exportCSV()">Download CSV</button>
+    </div>
+  `);
+}
+function csvEsc(v){
+  v = (v===null||v===undefined) ? '' : String(v);
+  if(/[",\n]/.test(v)) return '"' + v.replace(/"/g,'""') + '"';
+  return v;
+}
+function downloadCSV(filename, content){
+  const blob = new Blob(["\uFEFF"+content], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function exportCSV(){
+  const range = document.getElementById('f_exrange').value;
+  const includeSummary = document.getElementById('f_exsummary').checked;
+  let txns = [...state.transactions];
+  let label = 'all-time';
+  let periodTitle = 'All time';
+  if(range==='month'){
+    const val = document.getElementById('f_exmonth').value; // YYYY-MM
+    if(!val){ toast('Pick a month'); return; }
+    const [y,m] = val.split('-').map(Number);
+    txns = txns.filter(t=>{ const d=new Date(t.date); return d.getFullYear()===y && (d.getMonth()+1)===m; });
+    label = val;
+    periodTitle = new Date(y, m-1, 1).toLocaleDateString('en-IN',{month:'long', year:'numeric'});
+  }
+  txns.sort((a,b)=> new Date(a.date)-new Date(b.date));
+
+  const rows = [];
+  rows.push(['Ledger — expense report'].map(csvEsc).join(','));
+  rows.push(['Period', periodTitle].map(csvEsc).join(','));
+  rows.push(['Generated on', fmtDate(new Date())].map(csvEsc).join(','));
+  rows.push('');
+  rows.push(['Date','Type','Category','Account','Note','Amount'].map(csvEsc).join(','));
+  txns.forEach(t=>{
+    const cat = state.categories.find(c=>c.id===t.categoryId);
+    const acc = state.accounts.find(a=>a.id===t.accountId);
+    const signedAmount = (t.type==='expense' ? -t.amount : t.amount).toFixed(2);
+    rows.push([fmtDate(t.date), t.type, cat?cat.name:'—', acc?acc.name:'—', t.note||'', signedAmount].map(csvEsc).join(','));
+  });
+
+  const totalExpense = txns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const totalIncome = txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  rows.push('');
+  rows.push(['Total expenses', totalExpense.toFixed(2)].map(csvEsc).join(','));
+  rows.push(['Total income / payments', totalIncome.toFixed(2)].map(csvEsc).join(','));
+  rows.push(['Net', (totalIncome-totalExpense).toFixed(2)].map(csvEsc).join(','));
+
+  if(includeSummary){
+    rows.push('');
+    rows.push(['Category summary'].map(csvEsc).join(','));
+    rows.push(['Category','Budgeted','Spent','Remaining'].map(csvEsc).join(','));
+    state.categories.forEach(c=>{
+      const spent = txns.filter(t=>t.categoryId===c.id && t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      rows.push([c.name, (c.budget||0).toFixed(2), spent.toFixed(2), ((c.budget||0)-spent).toFixed(2)].map(csvEsc).join(','));
+    });
+  }
+
+  const csv = rows.join('\n');
+  downloadCSV(`ledger-report-${label}.csv`, csv);
+  closeModal();
+  toast('CSV downloaded');
+}
+
+/* ========================= MASTER RENDER ========================= */
+function renderAll(){
+  renderTape();
+  renderAccounts();
+  populateFilters();
+  renderTransactions();
+  renderBudgets();
+  renderCalendar();
+  renderFutureList();
+  renderSplit();
+  renderDashCatBreakdown();
+  renderDashUpcoming();
+  renderDashSplit();
+  renderDashRecent();
+}
+renderAll();
+</script>
+</body>
+</html>
